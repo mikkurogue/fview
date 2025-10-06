@@ -14,8 +14,4 @@ pub struct Args {
     /// Maximum depth to traverse
     #[arg(short = 'd', long)]
     pub max_depth: Option<usize>,
-
-    /// Show the current directory
-    #[arg(short = 'c', long)]
-    pub show_current: bool,
 }

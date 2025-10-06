@@ -12,7 +12,6 @@ use crate::cli::Args;
 struct Config {
     pub dir: String,
     max_depth: Option<usize>,
-    show_current: bool,
     canonicalize: bool,
 }
 
@@ -21,7 +20,6 @@ impl Default for Config {
         Config {
             dir: ".".to_string(),
             max_depth: None,
-            show_current: false,
             canonicalize: false,
         }
     }
@@ -32,7 +30,6 @@ impl From<Args> for Config {
         Config {
             dir: args.dir,
             max_depth: args.max_depth,
-            show_current: args.show_current,
             canonicalize: args.canonicalize,
         }
     }
@@ -42,14 +39,10 @@ fn view_files(config: Option<Config>) {
     let config = config.unwrap_or_default();
 
     let depth = config.max_depth.unwrap_or(1);
-    let show_current = config.show_current;
     let canonicalize = config.canonicalize;
 
     let mut walker = WalkDir::new(config.dir);
     walker = walker.max_depth(depth);
-    if !show_current {
-        walker = walker.min_depth(1);
-    }
 
     for entry in walker {
         let entry = match entry {
@@ -65,6 +58,7 @@ fn view_files(config: Option<Config>) {
 }
 
 fn get_file_name(entry: walkdir::DirEntry, canonicalize: bool) -> String {
+    println!("{:?}", entry.path());
     let name = entry.path().file_name().unwrap().to_str().unwrap();
     let name = if canonicalize {
         entry
