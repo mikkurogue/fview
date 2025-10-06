@@ -14,4 +14,7 @@ pub struct Args {
     /// Maximum depth to traverse
     #[arg(short = 'd', long)]
     pub max_depth: Option<usize>,
+
+    #[arg(short = 'H')]
+    pub show_hidden: bool,
 }

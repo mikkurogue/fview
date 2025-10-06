@@ -13,6 +13,7 @@ struct Config {
     pub dir: String,
     max_depth: Option<usize>,
     canonicalize: bool,
+    show_hidden: bool,
 }
 
 impl Default for Config {
@@ -21,6 +22,7 @@ impl Default for Config {
             dir: ".".to_string(),
             max_depth: None,
             canonicalize: false,
+            show_hidden: false,
         }
     }
 }
@@ -31,6 +33,7 @@ impl From<Args> for Config {
             dir: args.dir,
             max_depth: args.max_depth,
             canonicalize: args.canonicalize,
+            show_hidden: args.show_hidden,
         }
     }
 }
@@ -41,10 +44,12 @@ fn view_files(config: Option<Config>) {
     let depth = config.max_depth.unwrap_or(1);
     let canonicalize = config.canonicalize;
 
-    let mut walker = WalkDir::new(config.dir);
-    walker = walker.max_depth(depth);
+    let walker = WalkDir::new(config.dir).max_depth(depth);
+    let entries = walker
+        .into_iter()
+        .filter_entry(|e| config.show_hidden || !is_hidden(e));
 
-    for entry in walker {
+    for entry in entries {
         let entry = match entry {
             Ok(e) => e,
             Err(e) => {
@@ -57,9 +62,15 @@ fn view_files(config: Option<Config>) {
     }
 }
 
-fn get_file_name(entry: walkdir::DirEntry, canonicalize: bool) -> String {
-    println!("{:?}", entry.path());
-    let name = entry.path().file_name().unwrap().to_str().unwrap();
+fn get_file_name(entry: walkdir::DirEntry, canonicalize: bool) -> Result<String, Box<dyn Error>> {
+    let name = entry.file_name();
+    let name = match name.to_str() {
+        Some(n) => n,
+        None => {
+            return Err("Failed to convert file name to string".into());
+        }
+    };
+
     let name = if canonicalize {
         entry
             .path()
@@ -74,7 +85,7 @@ fn get_file_name(entry: walkdir::DirEntry, canonicalize: bool) -> String {
 
     let icon = get_file_icon(entry);
 
-    format!("{icon} {name}")
+    Ok(format!("{icon} {name}"))
 }
 
 fn get_file_icon(entry: walkdir::DirEntry) -> &'static str {
@@ -83,11 +94,19 @@ fn get_file_icon(entry: walkdir::DirEntry) -> &'static str {
         entry.path_is_symlink(),
         entry.path().is_file(),
     ) {
-        (true, _, _) => "", // Directory
-        (_, true, _) => "", // Symlink
-        (_, _, true) => "", // File
+        (true, _, _) => "\x1b[34m\x1b[0m", // Directory
+        (_, true, _) => "\x1b[36m\x1b[0m", // Symlink
+        (_, _, true) => "\x1b[32m\x1b[0m", // File
         _ => "",
     }
+}
+
+fn is_hidden(entry: &walkdir::DirEntry) -> bool {
+    entry
+        .file_name()
+        .to_str()
+        .map(|s| s.starts_with('.'))
+        .unwrap_or(false)
 }
 
 fn get_file_creation_date(entry: walkdir::DirEntry) -> Option<String> {
@@ -132,7 +151,11 @@ fn get_file_size(entry: walkdir::DirEntry) -> Option<u64> {
 }
 
 fn render_as_row(entry: walkdir::DirEntry, canonicalize: bool) -> String {
-    let name = get_file_name(entry.clone(), canonicalize);
+    let name = get_file_name(entry.clone(), canonicalize).map_err(|e| {
+        eprintln!("{}", e);
+        std::process::exit(1);
+    });
+
     let creation_date = get_file_creation_date(entry.clone()).unwrap_or_else(|| "-".to_string());
     let permissions = get_file_permissions(entry.clone()).unwrap_or_else(|| "-".to_string());
     let size = get_file_size(entry.clone())
@@ -141,7 +164,10 @@ fn render_as_row(entry: walkdir::DirEntry, canonicalize: bool) -> String {
 
     format!(
         "{:<20} {:<10} {:<10} {:<10}",
-        name, creation_date, permissions, size
+        name.unwrap(),
+        creation_date,
+        permissions,
+        size
     )
 }
 
