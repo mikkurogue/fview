@@ -19,7 +19,7 @@ struct Config {
 impl Default for Config {
     fn default() -> Self {
         Config {
-            dir: ".".to_string(),
+            dir: "./".to_string(),
             max_depth: None,
             canonicalize: false,
             show_hidden: false,
@@ -44,7 +44,7 @@ fn view_files(config: Option<Config>) {
     let depth = config.max_depth.unwrap_or(1);
     let canonicalize = config.canonicalize;
 
-    let walker = WalkDir::new(config.dir).max_depth(depth);
+    let walker = WalkDir::new(config.dir).min_depth(1).max_depth(depth);
     let entries = walker
         .into_iter()
         .filter_entry(|e| config.show_hidden || !is_hidden(e));
@@ -174,7 +174,21 @@ fn render_as_row(entry: walkdir::DirEntry, canonicalize: bool) -> String {
 fn main() {
     let cli = Args::parse();
 
-    let config = Config::from(cli);
+    let mut config = Config::from(cli);
+
+    // If the default directory is still "./", use the actual current working directory
+    if config.dir == "./" {
+        match std::env::current_dir() {
+            Ok(cwd) => {
+                config.dir = cwd.to_string_lossy().into_owned();
+            }
+            Err(e) => {
+                eprintln!("Error getting current directory: {}", e);
+                // Fallback to "./" if we can't get the current directory
+                config.dir = "./".to_string();
+            }
+        }
+    }
 
     view_files(Some(config));
 }
