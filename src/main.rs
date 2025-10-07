@@ -14,6 +14,7 @@ struct Config {
     max_depth: Option<usize>,
     canonicalize: bool,
     show_hidden: bool,
+    table: bool,
 }
 
 impl Default for Config {
@@ -23,6 +24,7 @@ impl Default for Config {
             max_depth: None,
             canonicalize: false,
             show_hidden: false,
+            table: false,
         }
     }
 }
@@ -34,6 +36,7 @@ impl From<Args> for Config {
             max_depth: args.max_depth,
             canonicalize: args.canonicalize,
             show_hidden: args.show_hidden,
+            table: args.table,
         }
     }
 }
@@ -58,7 +61,14 @@ fn view_files(config: Option<Config>) {
             }
         };
 
-        println!("{}", render_as_row(entry, canonicalize));
+        if config.table {
+            let table_entries = vec![entry];
+            let table = render_as_table(table_entries, canonicalize);
+            println!("{}", table);
+            continue;
+        } else {
+            println!("{}", render_as_row(entry, canonicalize));
+        }
     }
 }
 
@@ -169,6 +179,18 @@ fn render_as_row(entry: walkdir::DirEntry, canonicalize: bool) -> String {
         permissions,
         size
     )
+}
+
+fn render_as_table(entries: Vec<walkdir::DirEntry>, canonicalize: bool) -> String {
+    let mut table = String::new();
+
+    for entry in entries {
+        let row = render_as_row(entry, canonicalize);
+        table.push_str(&row);
+        table.push('\n');
+    }
+
+    table
 }
 
 fn main() {

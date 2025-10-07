@@ -17,4 +17,7 @@ pub struct Args {
 
     #[arg(short = 'H')]
     pub show_hidden: bool,
+
+    #[arg(short = 't', long)]
+    pub table: bool,
 }
