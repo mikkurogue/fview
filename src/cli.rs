@@ -1,5 +1,7 @@
 use clap::Parser;
 
+use crate::config::Unit;
+
 #[derive(Parser, Debug)]
 #[command(author, version, about)]
 pub struct Args {
@@ -20,4 +22,7 @@ pub struct Args {
 
     #[arg(short = 't', long)]
     pub table: bool,
+
+    #[arg(short = 'u', long, default_value = "bytes")]
+    pub unit: Option<Unit>,
 }
