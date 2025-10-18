@@ -25,4 +25,7 @@ pub struct Args {
 
     #[arg(short = 'u', long, default_value = "bytes")]
     pub unit: Option<Unit>,
+
+    #[arg(short = 'r', long)]
+    pub reversed: bool,
 }

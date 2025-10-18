@@ -1,15 +1,13 @@
-use std::str::FromStr;
-
-use std::{error::Error, os::unix::fs::PermissionsExt};
+use crate::cli::Args;
+use crate::string_ext;
 
 use chrono::{DateTime, Local};
 use chrono_lc::LocaleDate;
 use colored::*;
+use std::str::FromStr;
+use std::{error::Error, os::unix::fs::PermissionsExt};
 use string_ext::*;
 use walkdir::WalkDir;
-
-use crate::cli::Args;
-use crate::string_ext;
 
 /// Configuration for viewing files
 #[derive(Debug, Clone)]
@@ -26,6 +24,7 @@ pub struct Config {
     pub table: bool,
     /// Unit for file sizes
     pub unit: Option<Unit>,
+    pub reversed: bool,
 }
 
 impl Default for Config {
@@ -37,6 +36,7 @@ impl Default for Config {
             show_hidden: false,
             table: false,
             unit: Some(Unit::Bytes),
+            reversed: false,
         }
     }
 }
@@ -50,6 +50,7 @@ impl From<Args> for Config {
             show_hidden: args.show_hidden,
             table: args.table,
             unit: args.unit,
+            reversed: args.reversed,
         }
     }
 }
@@ -110,7 +111,30 @@ pub fn view_files(config: Option<Config>) {
 
     let unit = config.unit.unwrap_or(Unit::Bytes);
 
-    let walker = WalkDir::new(config.dir).min_depth(1).max_depth(depth);
+    let walker = WalkDir::new(config.dir)
+        .min_depth(1)
+        .max_depth(depth)
+        .sort_by(move |a, b| {
+            let a_metadata = a.metadata().ok();
+            let b_metadata = b.metadata().ok();
+
+            if config.reversed {
+                return b_metadata
+                    .unwrap()
+                    .created()
+                    .ok()
+                    .unwrap()
+                    .cmp(&a_metadata.unwrap().created().ok().unwrap());
+            }
+
+            a_metadata
+                .unwrap()
+                .created()
+                .ok()
+                .unwrap()
+                .cmp(&b_metadata.unwrap().created().ok().unwrap())
+        });
+
     let entries = walker
         .into_iter()
         .filter_entry(|e| config.show_hidden || !is_hidden(e));
