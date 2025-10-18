@@ -276,11 +276,7 @@ fn get_file_size(entry: walkdir::DirEntry, unit: &Unit) -> Option<String> {
                 Unit::GB => size_in_bytes / (1024 * 1024 * 1024),
                 Unit::TB => size_in_bytes / (1024 * 1024 * 1024 * 1024),
             };
-            Some(format!(
-                "{} {}",
-                size,
-                normalize_size_unit(&unit).to_string()
-            ))
+            Some(format!("{} {}", size, normalize_size_unit(unit)))
         }
         Err(_) => None,
     }
