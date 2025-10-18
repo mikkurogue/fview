@@ -5,6 +5,7 @@ use chrono::{DateTime, Local};
 use chrono_lc::LocaleDate;
 use colored::*;
 use std::str::FromStr;
+use std::time::SystemTime;
 use std::{error::Error, os::unix::fs::PermissionsExt};
 use string_ext::*;
 use walkdir::WalkDir;
@@ -118,21 +119,21 @@ pub fn view_files(config: Option<Config>) {
             let a_metadata = a.metadata().ok();
             let b_metadata = b.metadata().ok();
 
+            let a_created = a_metadata
+                .as_ref()
+                .and_then(|m| m.created().ok())
+                .unwrap_or(SystemTime::UNIX_EPOCH);
+
+            let b_created = b_metadata
+                .as_ref()
+                .and_then(|m| m.created().ok())
+                .unwrap_or(SystemTime::UNIX_EPOCH);
+
             if config.reversed {
-                return b_metadata
-                    .unwrap()
-                    .created()
-                    .ok()
-                    .unwrap()
-                    .cmp(&a_metadata.unwrap().created().ok().unwrap());
+                return b_created.cmp(&a_created);
             }
 
-            a_metadata
-                .unwrap()
-                .created()
-                .ok()
-                .unwrap()
-                .cmp(&b_metadata.unwrap().created().ok().unwrap())
+            a_created.cmp(&b_created)
         });
 
     let entries = walker
