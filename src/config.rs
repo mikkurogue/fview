@@ -4,11 +4,12 @@ use crate::string_ext;
 use chrono::{DateTime, Local};
 use chrono_lc::LocaleDate;
 use colored::*;
+use std::fs;
 use std::str::FromStr;
 use std::time::SystemTime;
 use std::{error::Error, os::unix::fs::PermissionsExt};
 use string_ext::*;
-use walkdir::WalkDir;
+use walkdir::{DirEntry, WalkDir};
 
 /// Configuration for viewing files
 #[derive(Debug, Clone)]
@@ -191,17 +192,26 @@ fn get_file_name(entry: walkdir::DirEntry, canonicalize: bool) -> Result<String,
 
 /// Get an icon based on the file type
 /// Directory:  (blue)
+/// Directory not empty:  (blue)
+/// Directory symlink:  (cyan)
 /// Symlink:  (cyan)
 /// File:  (green)
-fn get_file_icon(entry: walkdir::DirEntry) -> &'static str {
-    match (
-        entry.path().is_dir(),
-        entry.path_is_symlink(),
-        entry.path().is_file(),
-    ) {
-        (true, _, _) => "\x1b[34m\x1b[0m", // Directory
-        (_, true, _) => "\x1b[36m\x1b[0m", // Symlink
-        (_, _, true) => "\x1b[32m\x1b[0m", // File
+fn get_file_icon(entry: DirEntry) -> &'static str {
+    let path = entry.path();
+
+    let is_dir = path.is_dir();
+    let is_symlink = entry.path_is_symlink();
+    let is_file = path.is_file();
+    let is_nonempty_dir = is_dir
+        && fs::read_dir(path)
+            .map(|mut r| r.next().is_some())
+            .unwrap_or(false);
+
+    match (is_symlink, is_dir, is_file, is_nonempty_dir) {
+        (true, _, _, _) => "\x1b[36m\x1b[0m",     // Symlink
+        (_, true, _, true) => "\x1b[34m\x1b[0m",  // Non-empty directory
+        (_, true, _, false) => "\x1b[34m\x1b[0m", // Empty directory
+        (_, _, true, _) => "\x1b[32m\x1b[0m",     // File
         _ => "",
     }
 }
