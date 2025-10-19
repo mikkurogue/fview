@@ -241,6 +241,11 @@ fn get_file_creation_date(entry: walkdir::DirEntry) -> Option<String> {
     Some(datetime.formatl("%x %X", "").to_string())
 }
 
+fn get_file_extension(entry: walkdir::DirEntry) -> Option<String> {
+    let ext = entry.path().extension()?.to_str()?;
+    Some(ext.to_string())
+}
+
 /// Get the file permissions as a rwx string
 /// Examples:
 /// rwxr-xr-x -> "rwxr-xr-x"
@@ -299,6 +304,8 @@ fn render_as_row(entry: walkdir::DirEntry, canonicalize: bool, unit: &Unit) -> S
         std::process::exit(1);
     });
 
+    let ext = get_file_extension(entry.clone()).unwrap_or_else(|| "-".to_string());
+
     let creation_date = get_file_creation_date(entry.clone()).unwrap_or_else(|| "-".to_string());
 
     let permissions = get_file_permissions(entry.clone()).unwrap_or_else(|| "-".to_string());
@@ -311,13 +318,17 @@ fn render_as_row(entry: walkdir::DirEntry, canonicalize: bool, unit: &Unit) -> S
     let date_width = 20;
     let perm_width = 12;
     let size_width = 10;
+    let ext_width = 5;
 
     let name = name.ok().map(|n| n.to_string());
     let name = name.as_deref().unwrap_or("-");
+    let is_dir = entry.path().is_dir();
+    let ext = format!("{}{}", if is_dir { "" } else { "." }, ext);
 
     format!(
-        "{:<name_width$} {:<date_width$} {:<perm_width$} {:>size_width$}",
+        "{:<name_width$} {:<ext_width$} {:<date_width$} {:<perm_width$} {:>size_width$}",
         &name.truncate_ellipsis(name_width - 1).bold(),
+        &ext,
         &creation_date.truncate_ellipsis(date_width - 1),
         &permissions.truncate_ellipsis(perm_width - 1),
         size
